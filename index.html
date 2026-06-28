@@ -571,7 +571,6 @@
             return fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, { ...options, headers: { ...headers, ...options.headers } });
         }
 
-        // --- ナビゲーションの修正 ---
         function goToCpuLevelSelect() {
             document.getElementById('rules-screen').style.display = "none";
             document.getElementById('cpu-level-screen').style.display = "block";
@@ -580,7 +579,6 @@
         function selectCpuLevel(levelNum) {
             selectedCpuLevelNum = levelNum;
             document.getElementById('cpu-level-screen').style.display = "none";
-            // CPUレベルを選んだら、一人用モード(false)として文豪選択画面を開く
             goToSelectScreen(false);
         }
 
@@ -614,14 +612,12 @@
             if(pBungo.name === "重松清") pBungo.shield = 40;
 
             if(!isOnlineMode) {
-                // 一人用なら即座にバトル開始
                 startCpuBattle();
             } else {
                 alert(`${pBungo.name} を選択しました。下の「オンライン部屋設定」を行ってください。`);
             }
         }
 
-        // --- CPU戦開始 ---
         function startCpuBattle() {
             document.getElementById('character-select').style.display = "none";
             document.getElementById('battle-screen').style.display = "flex";
@@ -640,7 +636,6 @@
 
             isDead = false;
             continuousCorrectAnswers = 0;
-            document.getElementById('enemy-title-type').innerText = "相手 (CPU)";
             
             document.getElementById('p-battle-badge').innerText = `🎖️ ${currentTitle} / ${currentName}`;
             document.getElementById('e-battle-badge').innerText = `🤖 CPU専用`;
@@ -713,7 +708,6 @@
             startCpuTimer(cfg.interval * 1000);
         }
 
-        // --- オンライン対戦 ---
         async function startOnlineGame(role) {
             const roomVal = document.getElementById('room-input').value;
             if(!roomVal || roomVal.length !== 4) { alert("4桁の部屋番号を入力してください"); return; }
@@ -722,7 +716,6 @@
             myRole = role;
             targetRoomNo = roomVal;
             isDead = false;
-            document.getElementById('enemy-title-type').innerText = "相手 (通信対戦)";
 
             const myBadgeString = `🎖️ ${currentTitle} / ${currentName}`;
 
@@ -801,7 +794,6 @@
             await supabaseFetch(`rooms?room_no=eq.${targetRoomNo}`, { method: "PATCH", body: JSON.stringify(bodyData) });
         }
 
-        // --- クイズシステム ---
         function showQuiz() {
             const q = quizData[currentQuizIndex];
             document.getElementById('hint-text').innerText = `【問題】\n${q.hint}`;
@@ -958,7 +950,6 @@
             logAction("");
         }
 
-        // --- データ定義 ---
         const bungoData = [
             { name: "太宰治", hp: 240, maxHp: 240, atk: 35, abName: "人間失格", desc: "⚡人間失格: HPが半分以下になると攻撃力1.3倍" },
             { name: "夏目漱石", hp: 360, maxHp: 360, atk: 25, abName: "月が綺麗ですね", desc: "⚡月が綺麗ですね: 正解時25%の確率でHP30回復" },
