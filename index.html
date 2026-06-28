@@ -189,7 +189,7 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
         
-        /* 画像3枚目の名前変更バーの再現 */
+        /* 名前変更バー */
         .name-change-bar {
             background-color: #1a1a1a;
             border: 1px solid #444;
@@ -295,7 +295,6 @@
             flex-direction: column;
             align-items: center;
         }
-        /* バトル画面内での相手/自分の称号バッジ表示 */
         .battle-user-badge {
             font-size: 0.75em;
             background-color: #111;
@@ -395,9 +394,9 @@
         <div class="user-info-banner" id="login-user-badge">ログイン中</div>
 
         <div id="rules-screen" class="gold-box">
-            <h2>📜 对戦ルール説明</h2>
+            <h2>📜 対戦ルール説明</h2>
             <p>出題される作品や解説を読み、正しい文豪の名前を4択から選んでください。</p>
-            <p>文豪ごとに超強力な特殊パッシブスキルが自動で発動します！オンラインでリアルタイムに噛み合うバトルの面白さをご体感ください。</p>
+            <p>文豪ごとに超強力な特殊パッシブスキルが自動で発動します！</p>
             
             <div class="mode-select-btns">
                 <button class="start-nav-btn" onclick="goToCpuLevelSelect()">👤 一人で遊ぶ</button>
@@ -432,7 +431,6 @@
         </div>
 
         <div id="character-select" class="select-container">
-            
             <div class="name-change-bar">
                 <span>名前変更:</span>
                 <input type="text" id="player-name-input" class="inline-name-input" value="文豪ゲスト">
@@ -491,11 +489,8 @@
         let currentAuthMode = "login"; 
         let loginUserToken = "";
 
-        // 状態保持（初期値: 称号なし / 文豪ゲスト）
         let currentTitle = "称号なし";
         let currentName = "文豪ゲスト";
-
-        // 各レベルの称号獲得済みフラグ（1種類につき一度きり）
         let earnedTitles = { 1: false, 2: false, 3: false, 4: false, 5: false };
 
         const cpuLevels = {
@@ -517,7 +512,6 @@
         let currentTimerMax = 7000;
         let currentTimerLeft = 7000;
 
-        // プレイヤー戦闘データ
         let pBungo = null; 
         let eBungo = null; 
         let currentQuizIndex = 0;
@@ -577,7 +571,7 @@
             return fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, { ...options, headers: { ...headers, ...options.headers } });
         }
 
-        // 画面ナビゲーション
+        // --- ナビゲーションの修正 ---
         function goToCpuLevelSelect() {
             document.getElementById('rules-screen').style.display = "none";
             document.getElementById('cpu-level-screen').style.display = "block";
@@ -586,6 +580,7 @@
         function selectCpuLevel(levelNum) {
             selectedCpuLevelNum = levelNum;
             document.getElementById('cpu-level-screen').style.display = "none";
+            // CPUレベルを選んだら、一人用モード(false)として文豪選択画面を開く
             goToSelectScreen(false);
         }
 
@@ -595,7 +590,6 @@
             document.getElementById('character-select').style.display = "block";
             
             document.getElementById('online-setup').style.display = onlineFlag ? "block" : "none";
-            // 名前の初期値をフォームにセット
             document.getElementById('player-name-input').value = currentName;
 
             const grid = document.getElementById('select-grid-container');
@@ -617,23 +611,22 @@
             pBungo = JSON.parse(JSON.stringify(bungoData[idx]));
             pBungo.shield = 0;
             
-            // 特殊パッシブ：重松清（開幕シールド）
             if(pBungo.name === "重松清") pBungo.shield = 40;
 
             if(!isOnlineMode) {
+                // 一人用なら即座にバトル開始
                 startCpuBattle();
             } else {
-                alert(`${pBungo.name} を選択しました。部屋設定を行ってください。`);
+                alert(`${pBungo.name} を選択しました。下の「オンライン部屋設定」を行ってください。`);
             }
         }
 
-        // ================= 一人で遊ぶ (CPU戦) ロジック =================
+        // --- CPU戦開始 ---
         function startCpuBattle() {
             document.getElementById('character-select').style.display = "none";
             document.getElementById('battle-screen').style.display = "flex";
             document.getElementById('cpu-timer-wrapper').style.display = "block";
             
-            // 敵CPUの生成
             const cfg = cpuLevels[selectedCpuLevelNum];
             eBungo = {
                 name: `CPU レベル${selectedCpuLevelNum}`,
@@ -649,7 +642,6 @@
             continuousCorrectAnswers = 0;
             document.getElementById('enemy-title-type').innerText = "相手 (CPU)";
             
-            // バッジ表示の更新
             document.getElementById('p-battle-badge').innerText = `🎖️ ${currentTitle} / ${currentName}`;
             document.getElementById('e-battle-badge').innerText = `🤖 CPU専用`;
 
@@ -674,29 +666,20 @@
 
             cpuAttackTimer = setInterval(() => {
                 if(isDead) return;
-                // CPUのターン攻撃
                 let dmg = eBungo.atk;
                 
-                // 自分パッシブ：森鴎外（20%で完全回避）
                 if(pBungo.name === "森鴎外" && Math.random() < 0.20) {
                     logAction("🎨 森鴎外の『舞姫』！敵の攻撃を華麗に回避した！");
-                    resetCpuInterval();
-                    return;
+                    resetCpuInterval(); return;
                 }
-                // 自分パッシブ：幸田文（15%で無効化）
                 if(pBungo.name === "幸田文" && Math.random() < 0.15) {
                     logAction("🌊 幸田文の『凛々しき流れる』！攻撃を完全に無効化！");
-                    resetCpuInterval();
-                    return;
+                    resetCpuInterval(); return;
                 }
-                // 自分パッシブ：宮沢賢治（ダメージ5軽減）
                 if(pBungo.name === "宮沢賢治") dmg = Math.max(0, dmg - 5);
-                // 自分パッシブ：梅崎春生（ダメージ2軽減）
                 if(pBungo.name === "梅崎春生") dmg = Math.max(0, dmg - 2);
-                // 自分パッシブ：遠藤周作（15%カット）
                 if(pBungo.name === "遠藤周作") dmg = Math.round(dmg * 0.85);
 
-                // シールド処理
                 if(pBungo.shield > 0) {
                     if(pBungo.shield >= dmg) { pBungo.shield -= dmg; dmg = 0; }
                     else { dmg -= pBungo.shield; pBungo.shield = 0; }
@@ -705,12 +688,10 @@
                 pBungo.hp -= dmg;
                 logAction(`💥 CPUの攻撃！ ${dmg} のダメージを受けた！`);
 
-                // 自分パッシブ：三浦哲郎（一度だけ瀕死時に40回復）
                 if(pBungo.name === "三浦哲郎" && pBungo.hp <= 50 && !pBungo.hasHealed) {
                     pBungo.hp += 40; pBungo.hasHealed = true;
                     logAction("🐟 三浦哲郎の『忍ぶ川の情愛』発動！HPが40回復！");
                 }
-                // 自分パッシブ：浅田次郎（一度だけ耐える）
                 if(pBungo.hp <= 0 && pBungo.name === "浅田次郎" && !pBungo.hasEndured) {
                     pBungo.hp = 1; pBungo.hasEndured = true;
                     logAction("🚂 浅田次郎の『ぽっぽやの奇跡』！HP 1で踏みとどまった！");
@@ -732,7 +713,7 @@
             startCpuTimer(cfg.interval * 1000);
         }
 
-        // ================= オンライン対戦 ロジック (Supabase同期 + 相手バッジ取得) =================
+        // --- オンライン対戦 ---
         async function startOnlineGame(role) {
             const roomVal = document.getElementById('room-input').value;
             if(!roomVal || roomVal.length !== 4) { alert("4桁の部屋番号を入力してください"); return; }
@@ -743,11 +724,9 @@
             isDead = false;
             document.getElementById('enemy-title-type').innerText = "相手 (通信対戦)";
 
-            // 自分のバッジ情報を送信データに含める
             const myBadgeString = `🎖️ ${currentTitle} / ${currentName}`;
 
             if(role === 'host') {
-                // 部屋の初期化作成
                 await supabaseFetch(`rooms?room_no=eq.${targetRoomNo}`, { method: "DELETE" });
                 const res = await supabaseFetch("rooms", {
                     method: "POST",
@@ -760,7 +739,6 @@
                 if(!res.ok) { alert("部屋の作成に失敗しました"); return; }
                 alert("部屋を作成しました！対戦相手の入場を待っています...");
             } else {
-                // ゲスト参加更新
                 const res = await supabaseFetch(`rooms?room_no=eq.${targetRoomNo}`, {
                     method: "PATCH",
                     body: JSON.stringify({
@@ -772,12 +750,9 @@
 
             document.getElementById('character-select').style.display = "none";
             document.getElementById('battle-screen').style.display = "flex";
-            document.getElementById('cpu-timer-wrapper').style.display = "none"; // オンライン時はタイマー不要
+            document.getElementById('cpu-timer-wrapper').style.display = "none";
 
-            // バトル中の自分バッジ反映
             document.getElementById('p-battle-badge').innerText = myBadgeString;
-
-            // 高速ループ同期開始 (0.5秒おきにリアルタイム更新)
             syncIntervalTimer = setInterval(syncOnlineStatus, 500);
             
             currentQuizIndex = Math.floor(Math.random() * quizData.length);
@@ -793,31 +768,19 @@
                 const room = data[0];
 
                 if(myRole === 'host') {
-                    // 相手(Guest)のデータを反映
-                    eBungo = {
-                        name: room.guest_name, hp: room.guest_hp, maxHp: room.guest_max_hp, shield: room.guest_shield, atk: room.guest_atk, abName: room.guest_ab
-                    };
-                    // ★オンライン相手の称号バッジをリアルタイム反映
+                    eBungo = { name: room.guest_name, hp: room.guest_hp, maxHp: room.guest_max_hp, shield: room.guest_shield, atk: room.guest_atk, abName: room.guest_ab };
                     document.getElementById('e-battle-badge').innerText = room.guest_badge || "🎖️ 称号なし / ゲスト";
-
-                    // 自分のHPを相手側が削っている場合があるので同期
                     pBungo.hp = room.host_hp;
                     pBungo.shield = room.host_shield;
                 } else {
-                    // 相手(Host)のデータを反映
-                    eBungo = {
-                        name: room.host_name, hp: room.host_hp, maxHp: room.host_max_hp, shield: room.host_shield, atk: room.host_atk, abName: room.host_ab
-                    };
-                    // ★オンライン相手の称号バッジをリアルタイム反映
+                    eBungo = { name: room.host_name, hp: room.host_hp, maxHp: room.host_max_hp, shield: room.host_shield, atk: room.host_atk, abName: room.host_ab };
                     document.getElementById('e-battle-badge').innerText = room.host_badge || "🎖️ 称号なし / ホスト";
-
                     pBungo.hp = room.guest_hp;
                     pBungo.shield = room.guest_shield;
                 }
 
                 updateUiDisplays();
 
-                // 決着判定
                 if(pBungo.hp <= 0) {
                     isDead = true; pBungo.hp = 0; updateUiDisplays();
                     logAction("💀 負けてしまいました！"); endGame();
@@ -825,7 +788,7 @@
                     isDead = true; eBungo.hp = 0; updateUiDisplays();
                     logAction("🎉 相手を撃破！対戦勝利！"); endGame();
                 }
-            } catch(e) { console.error("同期エラー:", e); }
+            } catch(e) { console.error(e); }
         }
 
         async function sendMyStatusToOnline(newMyHp, newMyShield, newEnemyHp, newEnemyShield) {
@@ -835,21 +798,16 @@
             } else {
                 bodyData = { guest_hp: newMyHp, guest_shield: newMyShield, host_hp: newEnemyHp, host_shield: newEnemyShield };
             }
-            await supabaseFetch(`rooms?room_no=eq.${targetRoomNo}`, {
-                method: "PATCH",
-                body: JSON.stringify(bodyData)
-            });
+            await supabaseFetch(`rooms?room_no=eq.${targetRoomNo}`, { method: "PATCH", body: JSON.stringify(bodyData) });
         }
 
-        // ================= クイズ・戦闘システム共通共通ロジック =================
+        // --- クイズシステム ---
         function showQuiz() {
             const q = quizData[currentQuizIndex];
             document.getElementById('hint-text').innerText = `【問題】\n${q.hint}`;
-            
             const optsContainer = document.getElementById('options-container');
             optsContainer.innerHTML = "";
 
-            // 4択肢のシャッフル作成
             let choices = [q.ans];
             while(choices.length < 4) {
                 const rName = allBungoNamesForDummy[Math.floor(Math.random() * allBungoNamesForDummy.length)];
@@ -874,26 +832,17 @@
                 continuousCorrectAnswers++;
                 let currentAtk = pBungo.atk;
 
-                // 自分パッシブ発動判定
-                // 太宰治: HP半分以下で1.3倍
                 if(pBungo.name === "太宰治" && pBungo.hp <= (pBungo.maxHp / 2)) currentAtk = Math.round(currentAtk * 1.3);
-                // 中島敦: 最初の正解時のみ2倍
                 if(pBungo.name === "中島敦" && continuousCorrectAnswers === 1) currentAtk = currentAtk * 2;
-                // 梶井基次郎: HPが減るほどATK最大1.5倍
                 if(pBungo.name === "梶井基次郎") {
                     const lostPct = (pBungo.maxHp - pBungo.hp) / pBungo.maxHp;
                     currentAtk = Math.round(currentAtk * (1.0 + (lostPct * 0.5)));
                 }
-                // 星新一: 毎ターン攻撃力がランダム変動
-                if(pBungo.name === "星新一") currentAtk = Math.floor(Math.random() * 31) + 15; // 15〜45
-                // 野間宏: HP30%以下で1.4倍
+                if(pBungo.name === "星新一") currentAtk = Math.floor(Math.random() * 31) + 15;
                 if(pBungo.name === "野間宏" && pBungo.hp <= (pBungo.maxHp * 0.3)) currentAtk = Math.round(currentAtk * 1.4);
-                // 開高健: 15%の確率で2倍
                 if(pBungo.name === "開高健" && Math.random() < 0.15) { currentAtk *= 2; logAction("🎣 開高健の『熱き輝ける闇』！ダメージ2倍！"); }
-                // 大江健三郎: 正解するごとにATK永続+3
-                if(pBungo.name === "大江健三郎") { pBungo.atk += 3; logAction("📖 大江健三郎の『個人的な神話』！ATKが3上がった。"); }
+                if(pBungo.name === "大江健三郎") { pBungo.atk += 3; logAction("📖 大江健三郎の『個人的な神話』！ATK+3。"); }
 
-                // ダメージ適用
                 let actualDmg = currentAtk;
                 if(eBungo.shield > 0) {
                     if(eBungo.shield >= actualDmg) { eBungo.shield -= actualDmg; actualDmg = 0; }
@@ -902,18 +851,17 @@
                 eBungo.hp -= actualDmg;
                 let logMsg = `⭕ 正解！ ${eBungo.name} に ${currentAtk} ダメージ！`;
 
-                // 正解時回復パッシブなど
                 if(pBungo.name === "夏目漱石" && Math.random() < 0.25) {
-                    pBungo.hp = Math.min(pBungo.maxHp, pBungo.hp + 30); logMsg += " 🐱 漱石の『月が綺麗ですね』が発動、HP30回復！";
+                    pBungo.hp = Math.min(pBungo.maxHp, pBungo.hp + 30); logMsg += " 🐱 HP30回復！";
                 }
                 if(pBungo.name === "芥川龍之介") {
-                    eBungo.hp -= 10; pBungo.hp = Math.min(pBungo.maxHp, pBungo.hp + 10); logMsg += " 🕸️ 芥川の『蜘蛛の糸』！10ドレイン！";
+                    eBungo.hp -= 10; pBungo.hp = Math.min(pBungo.maxHp, pBungo.hp + 10); logMsg += " 🕸️ 10ドレイン！";
                 }
                 if(pBungo.name === "井上靖" && continuousCorrectAnswers % 3 === 0) {
-                    pBungo.hp = Math.min(pBungo.maxHp, pBungo.hp + 40); logMsg += " 🧱 井上靖の『天平の甍』発動！HP40大回復！";
+                    pBungo.hp = Math.min(pBungo.maxHp, pBungo.hp + 40); logMsg += " 🧱 HP40回復！";
                 }
                 if(pBungo.name === "鴨長明" && continuousCorrectAnswers === 5) {
-                    eBungo.atk = Math.round(eBungo.atk / 2); logMsg += " 🌊 鴨長明の『無常観』！敵のATKを永続で半分にした！";
+                    eBungo.atk = Math.round(eBungo.atk / 2); logMsg += " 🌊 敵のATKを半減！";
                 }
 
                 logAction(logMsg);
@@ -921,60 +869,49 @@
                 if(isOnlineMode) {
                     await sendMyStatusToOnline(pBungo.hp, pBungo.shield, eBungo.hp, eBungo.shield);
                 } else {
-                    // CPU戦の勝利判定
                     if(eBungo.hp <= 0) {
                         eBungo.hp = 0; isDead = true; updateUiDisplays();
                         
-                        // ★ CPU撃破時の称号獲得システム（1種類につき一度きり）
                         const targetTitle = cpuLevels[selectedCpuLevelNum].title;
                         if (!earnedTitles[selectedCpuLevelNum]) {
                             earnedTitles[selectedCpuLevelNum] = true;
-                            currentTitle = targetTitle; // 新しい称号に上書き
+                            currentTitle = targetTitle;
                             refreshTitleBadge();
                             alert(`🎉 勝利！CPUレベル${selectedCpuLevelNum}を初めて倒したので、称号【${targetTitle}】を獲得しました！`);
                         } else {
                             alert(`🎉 勝利！(称号【${targetTitle}】は既に獲得済みです)`);
                         }
-                        endGame();
-                        return;
+                        endGame(); return;
                     }
                     resetCpuInterval();
                 }
 
             } else {
-                // 不正解ペナルティ
                 continuousCorrectAnswers = 0;
                 logAction("❌ 不正解！ペナルティ反撃を受けます！");
                 
-                // 安部公房: 誤答反撃無効化
                 if(pBungo.name === "安部公房") {
                     logAction("📦 安部公房の『砂の壁』！誤答ペナルティを無効化した！");
                 } else {
                     let pDmg = 20; 
                     if(pBungo.shield > 0) {
                         if(pBungo.shield >= pDmg) { pBungo.shield -= pDmg; pDmg = 0; }
-                        else { pDmg -= pBungo.shield; pBungo.shield = 0; }
+                        else { pDmg -= pDmg; pBungo.shield = 0; }
                     }
                     pBungo.hp -= pDmg;
-                    if(pBungo.hp <= 0) { pBungo.hp = 0; isDead = true; logAction("💀 誤答によりHPが尽きました…"); endGame(); }
+                    if(pBungo.hp <= 0) { pBungo.hp = 0; isDead = true; logAction("💀 HPが尽きました…"); endGame(); }
                 }
 
-                if(isOnlineMode) {
-                    await sendMyStatusToOnline(pBungo.hp, pBungo.shield, eBungo.hp, eBungo.shield);
-                }
+                if(isOnlineMode) await sendMyStatusToOnline(pBungo.hp, pBungo.shield, eBungo.hp, eBungo.shield);
             }
 
-            // ターン終了時固定パッシブ処理
             if(!isDead) {
-                if(pBungo.name === "三島由紀夫") { pBungo.hp -= 7; logAction("🔥 三島由紀夫の『金閣炎上』！自傷ダメージ7発生。"); }
-                if(pBungo.name === "永井荷風") { eBungo.hp -= 5; pBungo.hp = Math.min(pBungo.maxHp, pBungo.hp + 5); logAction("🌂 永井荷風の『断腸亭日乗』！敵から5吸収。"); }
-                if(pBungo.name === "鷺沢萠") { eBungo.hp -= 10; logAction("🐎 鷺沢萠の『駆ける衝動』！敵に10の固定ダメージ。"); }
+                if(pBungo.name === "三島由紀夫") { pBungo.hp -= 7; logAction("🔥 自傷ダメージ7発生。"); }
+                if(pBungo.name === "永井荷風") { eBungo.hp -= 5; pBungo.hp = Math.min(pBungo.maxHp, pBungo.hp + 5); logAction("🌂 敵から5吸収。"); }
+                if(pBungo.name === "鷺沢萠") { eBungo.hp -= 10; logAction("🐎 敵に10の固定ダメージ。"); }
                 
                 if(pBungo.hp <= 0) { pBungo.hp = 0; isDead = true; logAction("💀 自傷等により力尽きました。"); endGame(); }
-                
-                if(isOnlineMode) {
-                    await sendMyStatusToOnline(pBungo.hp, pBungo.shield, eBungo.hp, eBungo.shield);
-                }
+                if(isOnlineMode) await sendMyStatusToOnline(pBungo.hp, pBungo.shield, eBungo.hp, eBungo.shield);
             }
 
             updateUiDisplays();
@@ -986,8 +923,6 @@
 
         function updateUiDisplays() {
             if(!pBungo || !eBungo) return;
-            
-            // 自分表示
             document.getElementById('p-name').innerText = pBungo.name;
             document.getElementById('p-hp-display').innerText = `HP: ${pBungo.hp} / ${pBungo.maxHp || 300}`;
             document.getElementById('p-atk-display').innerText = `ATK: ${pBungo.atk}`;
@@ -997,7 +932,6 @@
                 document.getElementById('p-shield-display').innerText = `🛡️ シールド: ${pBungo.shield}`;
             } else { document.getElementById('p-shield-display').style.display = "none"; }
 
-            // 相手表示
             document.getElementById('e-name').innerText = eBungo.name;
             document.getElementById('e-hp-display').innerText = `HP: ${eBungo.hp} / ${eBungo.maxHp || '???'}`;
             document.getElementById('e-atk-display').innerText = `ATK: ${eBungo.atk}`;
@@ -1009,17 +943,12 @@
         }
 
         function logAction(msg) {
-            const logBox = document.getElementById('log-text');
-            logBox.innerHTML = `<div>${msg}</div>`;
+            document.getElementById('log-text').innerHTML = `<div>${msg}</div>`;
         }
 
         function endGame() {
-            clearInterval(cpuAttackTimer);
-            clearInterval(cpuBarTimer);
-            clearInterval(syncIntervalTimer);
-            
-            const optsContainer = document.getElementById('options-container');
-            optsContainer.innerHTML = `<button class="btn" style="grid-column: 1 / span 2; background-color:#dab358; color:black;" onclick="returnToMenu()">メニューに戻る</button>`;
+            clearInterval(cpuAttackTimer); clearInterval(cpuBarTimer); clearInterval(syncIntervalTimer);
+            document.getElementById('options-container').innerHTML = `<button class="btn" style="grid-column: 1 / span 2; background-color:#dab358; color:black;" onclick="returnToMenu()">メニューに戻る</button>`;
         }
 
         function returnToMenu() {
@@ -1028,6 +957,48 @@
             document.getElementById('rules-screen').style.display = "block";
             logAction("");
         }
+
+        // --- データ定義 ---
+        const bungoData = [
+            { name: "太宰治", hp: 240, maxHp: 240, atk: 35, abName: "人間失格", desc: "⚡人間失格: HPが半分以下になると攻撃力1.3倍" },
+            { name: "夏目漱石", hp: 360, maxHp: 360, atk: 25, abName: "月が綺麗ですね", desc: "⚡月が綺麗ですね: 正解時25%の確率でHP30回復" },
+            { name: "芥川龍之介", hp: 200, maxHp: 200, atk: 40, abName: "蜘蛛の糸", desc: "⚡蜘蛛の糸: 自分がクイズに正解した時、敵のHPを10奪って回復する" },
+            { name: "中島敦", hp: 300, maxHp: 300, atk: 30, abName: "月下獣", desc: "⚡月下獣: 最初の正解時のみ与ダメージが2倍" },
+            { name: "森鴎外", hp: 320, maxHp: 320, atk: 28, abName: "舞姫", desc: "⚡舞姫: 20%の確率で敵の攻撃を完全回避" },
+            { name: "宮沢賢治", hp: 280, maxHp: 280, atk: 32, abName: "雨ニモマケズ", desc: "⚡雨ニモマケズ: 受ける全てのダメージを一律5軽減" },
+            { name: "鴨長明", hp: 220, maxHp: 220, atk: 38, abName: "無常観", desc: "⚡無常観: 5連続正解すると敵のATKを永久半減" },
+            { name: "永井荷風", hp: 310, maxHp: 310, atk: 27, abName: "断腸亭日乗", desc: "⚡断腸亭日乗: 毎ターン終了時、敵のHPを5吸収" },
+            { name: "梶井基次郎", hp: 210, maxHp: 210, atk: 38, abName: "鮮烈なる檸檬", desc: "⚡鮮烈なる檸檬: HPが減るほどATKが最大1.5倍に" },
+            { name: "野間宏", hp: 300, maxHp: 300, atk: 29, abName: "真空地帯", desc: "HP30%以下でATKが1.4倍に上昇" },
+            { name: "梅崎春生", hp: 290, maxHp: 290, atk: 30, abName: "戦後の幻影", desc: "被ダメージを常に2軽減する" },
+            { name: "三島由紀夫", hp: 200, maxHp: 200, atk: 48, abName: "金閣炎上", desc: "最高ATKだが毎ターンHPが7自傷" },
+            { name: "安部公房", hp: 330, maxHp: 330, atk: 26, abName: "砂の壁", desc: "クイズ誤答時のペナルティ反撃を完全無効" },
+            { name: "井上靖", hp: 350, maxHp: 350, atk: 26, abName: "天平の甍", desc: "3連正解するたびにHP40大回復" },
+            { name: "三浦哲郎", hp: 310, maxHp: 310, atk: 29, abName: "忍ぶ川の情愛", desc: "HP50以下になると一度だけHP40回復" },
+            { name: "開高健", hp: 300, maxHp: 300, atk: 32, abName: "熱き輝ける闇", desc: "正解時15%の確率で2倍ダメージ" },
+            { name: "遠藤周作", hp: 340, maxHp: 340, atk: 25, abName: "大いなる沈黙", desc: "すべての被ダメージを常に15%カット" },
+            { name: "大江健三郎", hp: 270, maxHp: 270, atk: 36, abName: "個人的な神話", desc: "正解するたびに自身のATKが永続で3加算" },
+            { name: "幸田文", hp: 330, maxHp: 330, atk: 26, abName: "凛々しき流れる", desc: "攻撃を受けた際15%の確率で無効化" },
+            { name: "重松清", hp: 320, maxHp: 320, atk: 26, abName: "親心のバリア", desc: "開幕に耐久40のシールドを展開" },
+            { name: "星新一", hp: 260, maxHp: 260, atk: 30, abName: "おせっかいな宇宙人", desc: "毎ターンATKが15〜45の間でランダム変動" },
+            { name: "鷺沢萠", hp: 260, maxHp: 260, atk: 34, abName: "駆ける衝動", desc: "毎ターン終了時に敵に10の固定ダメージ" },
+            { name: "浅田次郎", hp: 330, maxHp: 330, atk: 28, abName: "ぽっぽやの奇跡", desc: "致死ダメージを受けても一度だけHP1で耐える" }
+        ];
+
+        const allBungoNamesForDummy = [
+            "太宰治", "夏目漱石", "芥川龍之介", "中島敦", "森鴎外", "宮沢賢治", "鴨長明", "永井荷風", "野間宏", "梅崎春生", 
+            "三島由紀夫", "安部公房", "井上靖", "三浦哲郎", "開高健", "遠藤周作", "大江健三郎", "幸田文", "重松清", "星新一", 
+            "鷺沢萠", "浅田次郎", "安岡章太郎", "井上ひさし", "大岡昇平", "原民喜", "谷崎潤一郎", "井伏鱒二"
+        ];
+
+        const quizData = [
+            { hint: "『吾輩は猫である』『こころ』の著者。近代知識人の苦悩を描いた。", ans: "夏目漱石" },
+            { hint: "『人間失格』『走れメロス』の著者。無頼派の代表作家。", ans: "太宰治" },
+            { hint: "『羅生門』『蜘蛛の糸』の著者。理知的な短編の名手。", ans: "芥川龍之介" },
+            { hint: "『山月記』『李陵』の著者。漢文調の格調高い文体が特徴。", ans: "中島敦" },
+            { hint: "『舞姫』『高瀬舟』の著者。軍医としても活躍した文豪。", ans: "森鴎外" },
+            { hint: "『銀河鉄道の夜』『注文の多い料理店』の著者。岩手県出身の詩人・童話作家。", ans: "宮沢賢治" }
+        ];
     </script>
 </body>
 </html>
