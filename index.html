@@ -394,7 +394,7 @@
         <div class="user-info-banner" id="login-user-badge">ログイン中</div>
 
         <div id="rules-screen" class="gold-box">
-            <h2>📜 対戦ルール説明</h2>
+            <h2>📜 对戦ルール説明</h2>
             <p>出題される作品や解説を読み、正しい文豪の名前を4択から選んでください。</p>
             <p>文豪ごとに超強力な特殊パッシブスキルが自動で発動します！</p>
             
@@ -493,6 +493,17 @@
         let currentName = "文豪ゲスト";
         let earnedTitles = { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false };
 
+        // 称号の色を定義するオブジェクト
+        const titleColors = {
+            "称号なし": "#fff",
+            "1.文学好き": "#fff",
+            "2.文学の探求者": "#fff",
+            "3.新進気鋭の作家": "#fff",
+            "4.文壇の巨匠": "#ffb300", // オレンジ
+            "5.文豪神": "#ff4d4d",      // 赤
+            "6.便覧神": "#cc00ff"       // 紫
+        };
+
         const cpuLevels = {
             1: { hp: 250, atk: 30, interval: 7.0, title: "1.文学好き" },
             2: { hp: 400, atk: 45, interval: 5.5, title: "2.文学の探求者" },
@@ -518,9 +529,13 @@
         let currentQuizIndex = 0;
         let continuousCorrectAnswers = 0; 
         let isDead = false;
+        let inCountdown = false; // カウントダウン中フラグ
 
         function refreshTitleBadge() {
-            document.getElementById('current-title-badge').innerText = `🎖️ ${currentTitle} / ${currentName}`;
+            const badge = document.getElementById('current-title-badge');
+            badge.innerText = `🎖️ ${currentTitle} / ${currentName}`;
+            // 称号名に応じた色を反映
+            badge.style.color = titleColors[currentTitle] || "#fff";
         }
 
         function savePlayerName() {
@@ -639,15 +654,52 @@
             continuousCorrectAnswers = 0;
             
             document.getElementById('p-battle-badge').innerText = `🎖️ ${currentTitle} / ${currentName}`;
+            document.getElementById('p-battle-badge').style.color = titleColors[currentTitle] || "#fff";
             document.getElementById('e-battle-badge').innerText = `🤖 CPU専用`;
 
             updateUiDisplays();
-            currentQuizIndex = Math.floor(Math.random() * quizData.length);
-            showQuiz();
-            startCpuTimer(cfg.interval * 1000);
+
+            // レベル6の場合のみ5秒のカウントダウンを挟む
+            if (selectedCpuLevelNum === 6) {
+                runLevel6Countdown(cfg.interval * 1000);
+            } else {
+                inCountdown = false;
+                currentQuizIndex = Math.floor(Math.random() * quizData.length);
+                showQuiz();
+                startCpuTimer(cfg.interval * 1000);
+            }
+        }
+
+        // レベル6開始前の5秒カウントダウン処理
+        function runLevel6Countdown(nextIntervalMs) {
+            inCountdown = true;
+            clearInterval(cpuAttackTimer);
+            clearInterval(cpuBarTimer);
+            
+            document.getElementById('hint-text').innerText = "⚠️ 警告：間もなく究極の試練が始まります……";
+            document.getElementById('options-container').innerHTML = ""; // クイズボタンを隠す
+            
+            let count = 5;
+            logAction(`⚠️ 便覧神の降臨まで あと ${count} 秒...`);
+
+            const counter = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    logAction(`⚠️ 便覧神の降臨まで あと ${count} 秒...`);
+                } else {
+                    clearInterval(counter);
+                    inCountdown = false;
+                    logAction("🔥 便覧神 バトル開幕！！！ 🔥");
+                    // クイズ開始とタイマー始動
+                    currentQuizIndex = Math.floor(Math.random() * quizData.length);
+                    showQuiz();
+                    startCpuTimer(nextIntervalMs);
+                }
+            }, 1000);
         }
 
         function startCpuTimer(durationMs) {
+            if (inCountdown) return; // カウントダウン中はタイマーを作動させない
             clearInterval(cpuAttackTimer);
             clearInterval(cpuBarTimer);
             currentTimerMax = durationMs;
@@ -661,7 +713,7 @@
             }, 100);
 
             cpuAttackTimer = setInterval(() => {
-                if(isDead) return;
+                if(isDead || inCountdown) return;
                 let dmg = eBungo.atk;
                 
                 if(pBungo.name === "森鴎外" && Math.random() < 0.20) {
@@ -704,7 +756,7 @@
         }
 
         function resetCpuInterval() {
-            if(isDead) return;
+            if(isDead || inCountdown) return;
             const cfg = cpuLevels[selectedCpuLevelNum];
             startCpuTimer(cfg.interval * 1000);
         }
@@ -717,6 +769,7 @@
             myRole = role;
             targetRoomNo = roomVal;
             isDead = false;
+            inCountdown = false;
 
             const myBadgeString = `🎖️ ${currentTitle} / ${currentName}`;
 
@@ -747,6 +800,8 @@
             document.getElementById('cpu-timer-wrapper').style.display = "none";
 
             document.getElementById('p-battle-badge').innerText = myBadgeString;
+            // オンライン時は通常白（必要なら設定）
+            document.getElementById('p-battle-badge').style.color = "#fff";
             syncIntervalTimer = setInterval(syncOnlineStatus, 500);
             
             currentQuizIndex = Math.floor(Math.random() * quizData.length);
@@ -796,6 +851,7 @@
         }
 
         function showQuiz() {
+            if (inCountdown) return; // カウントダウン中は選択肢を出さない
             const q = quizData[currentQuizIndex];
             document.getElementById('hint-text').innerText = `【問題】\n${q.hint}`;
             const optsContainer = document.getElementById('options-container');
@@ -818,7 +874,7 @@
         }
 
         async function checkAnswer(selected) {
-            if(isDead) return;
+            if(isDead || inCountdown) return;
             const q = quizData[currentQuizIndex];
             
             if(selected === q.ans) {
@@ -975,6 +1031,8 @@
         }
 
         function returnToMenu() {
+            clearInterval(cpuAttackTimer); clearInterval(cpuBarTimer);
+            inCountdown = false;
             document.getElementById('battle-screen').style.display = "none";
             document.getElementById('cpu-timer-wrapper').style.display = "none";
             document.getElementById('rules-screen').style.display = "block";
@@ -1016,7 +1074,6 @@
         ];
 
         const quizData = [
-            /* 既存の問題 */
             { hint: "『吾輩は猫である』『こころ』の著者。近代知識人の苦悩を描いた。", ans: "夏目漱石" },
             { hint: "『人間失格』『走れメロス』の著者。無頼派の代表作家。", ans: "太宰治" },
             { hint: "『羅生門』『蜘蛛の糸』の著者。理知的な短編の名手。", ans: "芥川龍之介" },
@@ -1051,9 +1108,7 @@
             { hint: "『蒲団』『田舎教師』の著者。自らの赤裸々な私生活や内面をありのままに描く、日本自然主義文学の先駆者。", ans: "田山花袋" },
             { hint: "『武蔵野』『牛肉と馬鈴薯』の著者。自然の美しい描写とロマン主義的な抒情にあふれた独自の短編世界を築いた。", ans: "国木田独歩" },
             { hint: "『友情』『愛と死』の著者。白樺派の中心人物として、人間の自己拡充や理想主義、人道主義を力強く肯定した。", ans: "武者小路実篤" },
-
-            /* 新しくリクエストされた追加問題 */
-            { hint: "10代で集英社WEB文芸大賞を受賞しデビューした、『夏と花火と私の死体』や『夜のピクニック』『GOTH』の著者。切なさと残酷さが同居する作風。", ans: "乙一" },
+            { hint: "10代で集集社WEB文芸大賞を受賞しデビューした、『夏と花火と私の死体』や『夜のピクニック』『GOTH』の著者。切なさと残酷さが同居する作風。", ans: "乙一" },
             { hint: "『竜馬がゆく』『坂の上の雲』『燃えよ剣』の著者。俯瞰的な歴史観（司馬史観）と魅力的な人物描写で、戦後日本を代表する歴史・時代小説の巨匠。", ans: "司馬遼太郎" },
             { hint: "『容疑者Xの献身』『白夜行』『ナミヤ雑貨店の奇蹟』の著者。物理学者・湯川学シリーズ（ガリレオ）や加賀恭一郎シリーズなどで圧倒的人気を誇るミステリー界の旗手。", ans: "東野圭吾" }
         ];
