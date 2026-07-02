@@ -533,7 +533,7 @@
 
         function refreshTitleBadge() {
             const badge = document.getElementById('current-title-badge');
-            badge.innerText = `🎖️ ${currentTitle} / ${currentName}`;
+            badge.innerText = ` ${currentTitle} / ${currentName}`;
             // 称号名に応じた色を反映
             badge.style.color = titleColors[currentTitle] || "#fff";
         }
