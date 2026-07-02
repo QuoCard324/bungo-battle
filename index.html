@@ -394,9 +394,9 @@
         <div class="user-info-banner" id="login-user-badge">ログイン中</div>
 
         <div id="rules-screen" class="gold-box">
-            <h2>📜 对戦ルール説明</h2>
+            <h2>📜 対戦ルール説明</h2>
             <p>出題される作品や解説を読み、正しい文豪の名前を4択から選んでください。</p>
-            <p>文豪ごとに超強力な特殊スキルが自動で発動します！</p>
+            <p>文豪ごとに超強力な特殊パッシブスキルが自動で発動します！</p>
             
             <div class="mode-select-btns">
                 <button class="start-nav-btn" onclick="goToCpuLevelSelect()">👤 一人で遊ぶ</button>
@@ -491,14 +491,15 @@
 
         let currentTitle = "称号なし";
         let currentName = "文豪ゲスト";
-        let earnedTitles = { 1: false, 2: false, 3: false, 4: false, 5: false };
+        let earnedTitles = { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false };
 
         const cpuLevels = {
             1: { hp: 250, atk: 30, interval: 7.0, title: "1.文学好き" },
             2: { hp: 400, atk: 45, interval: 5.5, title: "2.文学の探求者" },
             3: { hp: 600, atk: 60, interval: 5.0, title: "3.新進気鋭の作家" },
             4: { hp: 800, atk: 75, interval: 4.0, title: "4.文壇の巨匠" },
-            5: { hp: 1000, atk: 90, interval: 2.5, title: "5.文豪神" }
+            5: { hp: 1000, atk: 90, interval: 2.5, title: "5.文豪神" },
+            6: { hp: 1300, atk: 110, interval: 1.5, title: "6.便覧神" }
         };
         
         let selectedCpuLevelNum = 1;
@@ -625,12 +626,12 @@
             
             const cfg = cpuLevels[selectedCpuLevelNum];
             eBungo = {
-                name: `CPU レベル${selectedCpuLevelNum}`,
+                name: selectedCpuLevelNum === 6 ? `便覧神 (Lv6)` : `CPU レベル${selectedCpuLevelNum}`,
                 hp: cfg.hp,
                 maxHp: cfg.hp,
                 atk: cfg.atk,
                 shield: 0,
-                abName: "自動猛攻",
+                abName: selectedCpuLevelNum === 6 ? "絶対絶望の猛攻" : "自動猛攻",
                 isCpu: true
             };
 
@@ -668,7 +669,7 @@
                     resetCpuInterval(); return;
                 }
                 if(pBungo.name === "幸田文" && Math.random() < 0.15) {
-                    logAction("🌊 幸田文の『凛々しき流れる』！攻撃を完全に無効化！");
+                    logAction("🌊 幸田文の『慢りしき流れる』！攻撃を完全に無効化！");
                     resetCpuInterval(); return;
                 }
                 if(pBungo.name === "宮沢賢治") dmg = Math.max(0, dmg - 5);
@@ -681,7 +682,7 @@
                 }
 
                 pBungo.hp -= dmg;
-                logAction(`💥 CPUの攻撃！ ${dmg} のダメージを受けた！`);
+                logAction(`💥 ${eBungo.name}の攻撃！ ${dmg} のダメージを受けた！`);
 
                 if(pBungo.name === "三浦哲郎" && pBungo.hp <= 50 && !pBungo.hasHealed) {
                     pBungo.hp += 40; pBungo.hasHealed = true;
@@ -869,11 +870,24 @@
                             earnedTitles[selectedCpuLevelNum] = true;
                             currentTitle = targetTitle;
                             refreshTitleBadge();
-                            alert(`🎉 勝利！CPUレベル${selectedCpuLevelNum}を初めて倒したので、称号【${targetTitle}】を獲得しました！`);
-                        } else {
-                            alert(`🎉 勝利！(称号【${targetTitle}】は既に獲得済みです)`);
                         }
-                        endGame(); return;
+
+                        // レベル5「文豪神」を倒した時のみ、裏ボス「便覧神」への挑戦確認を出す
+                        if(selectedCpuLevelNum === 5) {
+                            clearInterval(cpuAttackTimer); clearInterval(cpuBarTimer);
+                            logAction("🎉 文豪神を撃破！真の神が目覚めようとしています…");
+                            document.getElementById('options-container').innerHTML = `
+                                <div style="grid-column: 1 / span 2; margin-bottom:10px; font-weight:bold; color:#ff4d4d;">
+                                    ⚠️ 緊急警告：隠しボス【レベル6：便覧神】に挑戦しますか？
+                                </div>
+                                <button class="btn" style="background-color:#ff4d4d; color:white;" onclick="triggerLevel6Challenge(true)">はい（死闘へ）</button>
+                                <button class="btn" style="background-color:#3a3a3a; color:white;" onclick="triggerLevel6Challenge(false)">いいえ（街へ戻る）</button>
+                            `;
+                            return;
+                        } else {
+                            alert(`🎉 勝利！称号【${targetTitle}】を獲得・保持しています！`);
+                            endGame(); return;
+                        }
                     }
                     resetCpuInterval();
                 }
@@ -910,6 +924,23 @@
             if(!isDead) {
                 currentQuizIndex = Math.floor(Math.random() * quizData.length);
                 showQuiz();
+            }
+        }
+
+        function triggerLevel6Challenge(accept) {
+            if(accept) {
+                selectedCpuLevelNum = 6;
+                // プレイヤーのHPとシールドを全回復させて仕切り直し
+                const baseIdx = bungoData.findIndex(b => b.name === pBungo.name);
+                pBungo.hp = bungoData[baseIdx].hp;
+                pBungo.maxHp = bungoData[baseIdx].hp;
+                pBungo.shield = pBungo.name === "重松清" ? 40 : 0;
+                
+                alert("🔴 空間が歪む……究極の国語の具現『便覧神』が降臨した！！");
+                startCpuBattle();
+            } else {
+                alert("無事に帰還しました。");
+                returnToMenu();
             }
         }
 
@@ -981,7 +1012,7 @@
             "三島由紀夫", "安部公房", "井上靖", "三浦哲郎", "開高健", "遠藤周作", "大江健三郎", "幸田文", "重松清", "星新一", 
             "鷺沢萠", "浅田次郎", "安岡章太郎", "井上ひさし", "大岡昇平", "原民喜", "谷崎潤一郎", "井伏鱒二", "宮本輝", 
             "村上春樹", "江國香織", "川上弘美", "朝井リョウ", "あさのあつこ", "泉鏡花", "有島武郎", "菊池寛", "田山花袋", 
-            "国木田独歩", "武者小路実篤"
+            "国木田独歩", "武者小路実篤", "乙一", "司馬遼太郎", "東野圭吾"
         ];
 
         const quizData = [
@@ -1012,8 +1043,6 @@
             { hint: "『ノルウェイの森』『海辺のカフカ』の著者。世界中に熱狂的なファン（ハルキニスト）を持つ現代文学の旗手。", ans: "村上春樹" },
             { hint: "『きらきらひかる』『神様のボート』の著者。透明感のある文体で、恋愛や独自の家族のかたちを繊細に描く。", ans: "江國香織" },
             { hint: "『センセイの鞄』『蛇を踏む』の著者。どこか不思議でファンタジー要素を孕んだ日常を、淡々とした美しい描写で綴る。", ans: "川上弘美" },
-
-            /* 新しくリクエストされた追加問題 */
             { hint: "『桐島、部活やめるってよ』でデビューし、『何者』で戦後最年少の直木賞受賞を果たした平成生まれの作家。", ans: "朝井リョウ" },
             { hint: "天才ピッチャー原田巧の葛藤を描いた『バッテリー』や、『NO.6』などの著者として知られる児童文学・青春小説の名手。", ans: "あさのあつこ" },
             { hint: "『高野聖』『歌行燈』の著者。尾崎紅葉に師事し、ロマンティシズムと幻想的な怪異の世界を極美の文章で描き出した。", ans: "泉鏡花" },
@@ -1021,7 +1050,12 @@
             { hint: "『父帰る』『恩讐の彼方に』の著者。文藝春秋を創刊し、芥川賞・直木賞を設立して文壇の発展に大いに貢献した。", ans: "菊池寛" },
             { hint: "『蒲団』『田舎教師』の著者。自らの赤裸々な私生活や内面をありのままに描く、日本自然主義文学の先駆者。", ans: "田山花袋" },
             { hint: "『武蔵野』『牛肉と馬鈴薯』の著者。自然の美しい描写とロマン主義的な抒情にあふれた独自の短編世界を築いた。", ans: "国木田独歩" },
-            { hint: "『友情』『愛と死』の著者。白樺派の中心人物として、人間の自己拡充や理想主義、人道主義を力強く肯定した。", ans: "武者小路実篤" }
+            { hint: "『友情』『愛と死』の著者。白樺派の中心人物として、人間の自己拡充や理想主義、人道主義を力強く肯定した。", ans: "武者小路実篤" },
+
+            /* 新しくリクエストされた追加問題 */
+            { hint: "10代で集英社WEB文芸大賞を受賞しデビューした、『夏と花火と私の死体』や『夜のピクニック』『GOTH』の著者。切なさと残酷さが同居する作風。", ans: "乙一" },
+            { hint: "『竜馬がゆく』『坂の上の雲』『燃えよ剣』の著者。俯瞰的な歴史観（司馬史観）と魅力的な人物描写で、戦後日本を代表する歴史・時代小説の巨匠。", ans: "司馬遼太郎" },
+            { hint: "『容疑者Xの献身』『白夜行』『ナミヤ雑貨店の奇蹟』の著者。物理学者・湯川学シリーズ（ガリレオ）や加賀恭一郎シリーズなどで圧倒的人気を誇るミステリー界の旗手。", ans: "東野圭吾" }
         ];
     </script>
 </body>
